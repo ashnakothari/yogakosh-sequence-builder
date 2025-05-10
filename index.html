@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    // Initialize Supabase
+    const SUPABASE_URL = 'your-supabase-url-here';
+    const SUPABASE_ANON_KEY = 'your-supabase-anon-key-here';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yoga Sequence Builder - Step 1</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background-color: #2e7d32;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .button {
+      background-color: #2e7d32;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    .button.secondary {
+      background-color: white;
+      color: #2e7d32;
+      border: 1px solid #2e7d32;
+    }
+    .button:disabled {
+      background-color: #cccccc;
+      color: #666666;
+      cursor: not-allowed;
+      border: none;
+    }
+    .paper {
+      background-color: white;
+      padding: 20px;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .stepper {
+      display: flex;
+      justify-content: space-between;
+      margin: 20px 0;
+    }
+    .step {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      cursor: pointer;
+    }
+    .step.active {
+      font-weight: bold;
+      border-bottom: 2px solid #2e7d32;
+    }
+    .hidden {
+      display: none !important;
+    }
+    .flex {
+      display: flex;
+    }
+    .space-between {
+      justify-content: space-between;
+    }
+    .mt-20 {
+      margin-top: 20px;
+    }
+    
+    /* Dialog styles */
+    .dialog {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .dialog-content {
+      background-color: white;
+      padding: 20px;
+      border-radius: 4px;
+      max-width: 800px;
+      width: 90%;
+      max-height: 80vh;
+      overflow: auto;
+    }
+    .poses-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .pose-card {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .pose-card.selected {
+      border: 2px solid #2e7d32;
+      transform: translateY(-3px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .pose-card-image {
+      height: 150px;
+      background-color: #eee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pose-card-content {
+      padding: 15px;
+    }
+    .tag {
+      display: inline-block;
+      background-color: #e0e0e0;
+      border-radius: 16px;
+      padding: 3px 10px;
+      font-size: 12px;
+      margin-right: 5px;
+      margin-top: 5px;
+    }
+    .tag.beginner {
+      background-color: #c8e6c9;
+    }
+    .tag.intermediate {
+      background-color: #ffcc80;
+    }
+    .tag.advanced {
+      background-color: #ef9a9a;
+    }
+    
+    /* Section styles */
+    .section {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+    .section-header {
+      background-color: #f9f9f9;
+      padding: 10px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #ddd;
+    }
+    .pose-item {
+      padding: 10px 15px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+    }
+    .pose-number {
+      background-color: #eee;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      margin-right: 15px;
+    }
+    .pose-details {
+      flex: 1;
+    }
+    .pose-actions {
+      display: flex;
+    }
+    .filter-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    .filter-group > div {
+      flex: 1;
+      min-width: 150px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Yoga Sequence Builder</h1>
+    <div>
+      <button id="saveButton" class="button">Save</button>
+      <button id="previewToggleButton" class="button">Preview</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="step active" id="step-0" onclick="showStep(0)">Sequence Details</div>
+      <div class="step" id="step-1" onclick="showStep(1)">Add Poses</div>
+      <div class="step" id="step-2" onclick="showStep(2)">Preview</div>
+    </div>
+
+    <!-- Step 1: Sequence Details -->
+    <div id="step-0-content" class="paper">
+      <h2>Step 1: Sequence Details</h2>
+      <div>
+        <label for="sequenceName">Sequence Name</label>
+        <input type="text" id="sequenceName" placeholder="Enter sequence name" style="width: 100%; padding: 8px; margin: 8px 0;">
+      </div>
+      <div>
+        <label for="sequenceLevel">Difficulty Level</label>
+        <select id="sequenceLevel" style="width: 100%; padding: 8px; margin: 8px 0;">
+          <option value="">Select level</option>
+          <option value="Beginner">Beginner</option>
+          <option value="Intermediate">Intermediate</option>
+          <option value="Advanced">Advanced</option>
+        </select>
+      </div>
+      <div>
+        <label for="sequenceFocus">Focus Area</label>
+        <input type="text" id="sequenceFocus" placeholder="e.g., Back Strength, Flexibility, Balance" style="width: 100%; padding: 8px; margin: 8px 0;">
+      </div>
+      <div>
+        <label for="sequenceDescription">Description</label>
+        <textarea id="sequenceDescription" rows="4" placeholder="Describe your sequence" style="width: 100%; padding: 8px; margin: 8px 0;"></textarea>
+      </div>
+    </div>
+
+    <!-- Step 2: Add Poses -->
+    <div id="step-1-content" class="paper hidden">
+      <h2>Step 2: Add Poses</h2>
+      <div class="flex space-between">
+        <h3>Sections</h3>
+        <button id="addSectionButton" class="button" onclick="addSection()">+ Add Section</button>
+      </div>
+      
+      <div id="sectionsContainer">
+        <!-- Sections will be added here -->
+      </div>
+    </div>
+
+    <!-- Step 3: Preview -->
+    <div id="step-2-content" class="paper hidden">
+      <h2>Step 3: Preview</h2>
+      <div style="margin-top: 20px;">
+        <h3>Sequence Summary</h3>
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px;">
+          <h4 id="previewSequenceName">Untitled Sequence</h4>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+            <div><strong>Level:</strong> <span id="previewSequenceLevel">Not specified</span></div>
+            <div><strong>Focus:</strong> <span id="previewSequenceFocus">Not specified</span></div>
+            <div><strong>Duration:</strong> <span id="previewDuration">0:00</span></div>
+          </div>
+          <p id="previewSequenceDescription">No description provided.</p>
+        </div>
+      </div>
+      
+      <div id="previewSectionsContainer">
+        <!-- Preview sections will be added here -->
+      </div>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="flex space-between mt-20">
+      <button id="prevButton" class="button secondary" onclick="prevStep()" disabled>Back</button>
+      <button id="nextButton" class="button" onclick="nextStep()">Next</button>
+    </div>
+  </div>
+  
+  <!-- Pose Selection Dialog -->
+  <div id="poseSelectionDialog" class="dialog hidden">
+    <div class="dialog-content">
+      <h2>Select Poses</h2>
+      <div class="filter-group">
+        <div>
+          <input type="text" id="poseSearchInput" placeholder="Search poses..." 
+                 style="width: 100%; padding: 8px;">
+        </div>
+        <div>
+          <select id="poseCategoryFilter" style="width: 100%; padding: 8px;">
+            <option value="">All Categories</option>
+            <!-- Categories will be populated by JavaScript -->
+          </select>
+        </div>
+        <div>
+          <select id="poseLevelFilter" style="width: 100%; padding: 8px;">
+            <option value="">All Levels</option>
+            <option value="Beginner">Beginner</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Advanced">Advanced</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label for="poseDurationInput">Duration for Selected Poses (seconds)</label>
+        <input type="number" id="poseDurationInput" value="30" min="5"
+               style="width: 100px; padding: 8px; margin-top: 5px;">
+      </div>
+
+      <div id="poseGridContainer" class="poses-grid">
+        <!-- Poses will be loaded here -->
+      </div>
+
+      <div class="flex space-between mt-20">
+        <button id="cancelPoseSelectionButton" class="button secondary">Cancel</button>
+        <button id="addSelectedPosesButton" class="button">Add 0 Poses</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---- Sample Data ----
+    // Replace the hardcoded allPoses array with:
+let allPoses = [];
+
+// Function to fetch poses from Supabase
+async function fetchPosesFromDatabase() {
+  const { data, error } = await supabase
+    .from('poses')
+    .select('*')
+    .order('english_name', { ascending: true });
+    
+  if (error) {
+    console.error('Error fetching poses:', error);
+    return [];
+  }
+  return data;
+}
+  
+    
+    // ---- Application State ----
+    const state = {
+      activeStep: 0,
+      sections: [
+        { id: "1", name: "Warm-up", order: 1, poses: [] }
+      ],
+      selectedSection: null,
+      selectedPoses: [],
+      selectedPoseDuration: 30,
+      filteredPoses: [...allPoses]
+    };
+    
+    // ---- Basic Navigation Functions ----
+    // Function to show a specific step
+    function showStep(step) {
+      // Hide all step contents
+      document.getElementById('step-0-content').classList.add('hidden');
+      document.getElementById('step-1-content').classList.add('hidden');
+      document.getElementById('step-2-content').classList.add('hidden');
+      
+      // Show the selected step
+      document.getElementById('step-' + step + '-content').classList.remove('hidden');
+      
+      // Update stepper UI
+      document.getElementById('step-0').classList.remove('active');
+      document.getElementById('step-1').classList.remove('active');
+      document.getElementById('step-2').classList.remove('active');
+      document.getElementById('step-' + step).classList.add('active');
+      
+      // Update navigation buttons
+      document.getElementById('prevButton').disabled = (step === 0);
+      document.getElementById('nextButton').disabled = (step === 2);
+      document.getElementById('nextButton').textContent = (step === 2) ? 'Finish' : 'Next';
+      
+      // Update current step
+      state.activeStep = step;
+      
+      // If we're showing the preview step, update the preview data
+      if (step === 2) {
+        updatePreview();
+      }
+    }
+    
+    // Function to go to the next step
+    function nextStep() {
+      if (state.activeStep < 2) {
+        showStep(state.activeStep + 1);
+      }
+    }
+    
+    // Function to go to the previous step
+    function prevStep() {
+      if (state.activeStep > 0) {
+        showStep(state.activeStep - 1);
+      }
+    }
+    
+    // ---- Section Management Functions ----
+    // Add a new section
+    function addSection() {
+      const newSection = {
+        id: String(Date.now()),
+        name: `Section ${state.sections.length + 1}`,
+        order: state.sections.length + 1,
+        poses: []
+      };
+      
+      state.sections.push(newSection);
+      renderSections();
+    }
+    
+    // Render all sections
+    function renderSections() {
+      const container = document.getElementById('sectionsContainer');
+      container.innerHTML = '';
+      
+      state.sections.forEach(section => {
+        const sectionElement = document.createElement('div');
+        sectionElement.className = 'section';
+        sectionElement.innerHTML = `
+          <div class="section-header">
+            <input type="text" value="${section.name}" 
+                   style="width: 300px; padding: 8px;" 
+                   data-section-id="${section.id}"
+                   onchange="updateSectionName('${section.id}', this.value)">
+            <div>
+              <span class="tag">${section.poses.length} poses</span>
+              ${state.sections.length > 1 ? 
+                `<button class="button secondary" 
+                        onclick="removeSection('${section.id}')">Remove</button>` : ''}
+            </div>
+          </div>
+          <div style="padding: 15px;">
+            <button class="button" onclick="openPoseSelectionDialog('${section.id}')">
+              + Add Poses
+            </button>
+          </div>
+          <div class="pose-list" data-section-id="${section.id}">
+            ${section.poses.length === 0 ? 
+              '<div class="pose-item">No poses added yet. Click \'Add Poses\' to get started.</div>' : 
+              renderPosesForSection(section)}
+          </div>
+        `;
+        
+        container.appendChild(sectionElement);
+      });
+    }
+    
+    // Update a section name
+    function updateSectionName(sectionId, newName) {
+      state.sections = state.sections.map(section => 
+        section.id === sectionId ? { ...section, name: newName } : section
+      );
+    }
+    
+    // Remove a section
+    function removeSection(sectionId) {
+      if (state.sections.length > 1) {
+        state.sections = state.sections.filter(section => section.id !== sectionId);
+        renderSections();
+      }
+    }
+    
+    // ---- Pose Selection Functions ----
+    // Open the pose selection dialog
+    function openPoseSelectionDialog(sectionId) {
+      state.selectedSection = sectionId;
+      state.selectedPoses = [];
+      
+      // Populate category dropdown if not already done
+      const categoryFilter = document.getElementById('poseCategoryFilter');
+      if (categoryFilter.childElementCount <= 1) {
+        const categories = [...new Set(allPoses.map(pose => pose.category))];
+        categories.forEach(category => {
+          const option = document.createElement('option');
+          option.value = category;
+          option.textContent = category;
+          categoryFilter.appendChild(option);
+        });
+      }
+      
+      // Reset filters
+      document.getElementById('poseSearchInput').value = '';
+      document.getElementById('poseCategoryFilter').value = '';
+      document.getElementById('poseLevelFilter').value = '';
+      document.getElementById('poseDurationInput').value = state.selectedPoseDuration;
+      
+      // Reset filtered poses
+      state.filteredPoses = [...allPoses];
+      renderPoses();
+      
+      // Update button text
+      updateAddSelectedPosesButtonText();
+      
+      // Show dialog
+      document.getElementById('poseSelectionDialog').classList.remove('hidden');
+    }
+    
+    // Close the pose selection dialog
+    function closePoseSelectionDialog() {
+      document.getElementById('poseSelectionDialog').classList.add('hidden');
+      state.selectedSection = null;
+      state.selectedPoses = [];
+    }
+    
+    // Render poses in the selection dialog
+    function renderPoses() {
+      const container = document.getElementById('poseGridContainer');
+      container.innerHTML = '';
+      
+      if (state.filteredPoses.length === 0) {
+        container.innerHTML = '<p>No poses found. Try adjusting your filters.</p>';
+        return;
+      }
+      
+      state.filteredPoses.forEach(pose => {
+        const poseCard = document.createElement('div');
+        poseCard.className = `pose-card ${state.selectedPoses.includes(pose.id) ? 'selected' : ''}`;
+        poseCard.setAttribute('data-pose-id', pose.id);
+        
+        poseCard.innerHTML = `
+          <div class="pose-card-image">
+            <img src="${pose.image_url}" alt="${pose.english_name}" style="max-height: 100%; max-width: 100%;">
+          </div>
+          <div class="pose-card-content">
+            <h3>${pose.english_name}</h3>
+            <div>${pose.sanskrit_name || ''}</div>
+            <div style="margin-top: 10px;">
+              <span class="tag ${pose.level.toLowerCase()}">${pose.level}</span>
+              <span class="tag">${pose.category}</span>
+            </div>
+          </div>
+        `;
+        
+        poseCard.addEventListener('click', () => togglePoseSelection(pose.id));
+        container.appendChild(poseCard);
+      });
+    }
+    
+    // Filter poses based on search criteria
+    function filterPoses() {
+      const searchQuery = document.getElementById('poseSearchInput').value.toLowerCase();
+      const categoryFilter = document.getElementById('poseCategoryFilter').value;
+      const levelFilter = document.getElementById('poseLevelFilter').value;
+      
+      state.filteredPoses = allPoses.filter(pose => {
+        // Apply search filter
+        if (searchQuery && 
+            !pose.english_name.toLowerCase().includes(searchQuery) && 
+            (!pose.sanskrit_name || !pose.sanskrit_name.toLowerCase().includes(searchQuery))) {
+          return false;
+        }
+        
+        // Apply category filter
+        if (categoryFilter && pose.category !== categoryFilter) {
+          return false;
+        }
+        
+        // Apply level filter
+        if (levelFilter && pose.level !== levelFilter) {
+          return false;
+        }
+        
+        return true;
+      });
+      
+      renderPoses();
+    }
+    
+    // Toggle pose selection
+    function togglePoseSelection(poseId) {
+      if (state.selectedPoses.includes(poseId)) {
+        state.selectedPoses = state.selectedPoses.filter(id => id !== poseId);
+      } else {
+        state.selectedPoses.push(poseId);
+      }
+      
+      renderPoses();
+      updateAddSelectedPosesButtonText();
+    }
+    
+    // Update the text on the Add Selected Poses button
+    function updateAddSelectedPosesButtonText() {
+      const count = state.selectedPoses.length;
+      document.getElementById('addSelectedPosesButton').textContent = `Add ${count} Pose${count !== 1 ? 's' : ''}`;
+      document.getElementById('addSelectedPosesButton').disabled = count === 0;
+    }
+    
+    // Add selected poses to a section
+    function addSelectedPosesToSection() {
+      if (state.selectedPoses.length && state.selectedSection) {
+        const section = state.sections.find(s => s.id === state.selectedSection);
+        
+        if (section) {
+          const posesToAdd = state.selectedPoses.map(poseId => {
+            const pose = allPoses.find(p => p.id === poseId);
+            return {
+              id: `${section.id}-${poseId}-${Date.now()}`,
+              pose_id: poseId,
+              order: section.poses.length + 1,
+              duration: parseInt(document.getElementById('poseDurationInput').value, 10) || 30,
+              pose: pose
+            };
+          });
+          
+          section.poses = [...section.poses, ...posesToAdd];
+          renderSections();
+          closePoseSelectionDialog();
+        }
+      }
+    }
+    
+    // Render poses for a section
+    function renderPosesForSection(section) {
+      let html = '';
+      
+      section.poses.forEach((pose, index) => {
+        html += `
+          <div class="pose-item">
+            <div class="pose-number">${index + 1}</div>
+            <div class="pose-details">
+              <div>
+                <strong>${pose.pose.english_name}</strong> 
+                ${pose.pose.sanskrit_name ? `(${pose.pose.sanskrit_name})` : ''}
+              </div>
+              <div>
+                <div style="margin-top: 5px;">
+                  <label style="display: inline; margin-right: 5px;">Duration:</label>
+                  <input type="number" value="${pose.duration}" 
+                         style="width: 80px; display: inline;" 
+                         data-section-id="${section.id}" 
+                         data-pose-id="${pose.id}" 
+                         min="5"
+                         onchange="updatePoseDuration('${section.id}', '${pose.id}', this.value)">
+                  seconds
+                </div>
+                <div style="margin-top: 5px;">
+                  <span class="tag ${pose.pose.level.toLowerCase()}">${pose.pose.level}</span>
+                  <span class="tag">${pose.pose.category}</span>
+                </div>
+              </div>
+            </div>
+            <div class="pose-actions">
+              <button class="button secondary" 
+                      onclick="movePoseUp('${section.id}', ${index})"
+                      ${index === 0 ? 'disabled' : ''}>↑</button>
+              <button class="button secondary" 
+                      onclick="movePoseDown('${section.id}', ${index})"
+                      ${index === section.poses.length - 1 ? 'disabled' : ''}>↓</button>
+              <button class="button secondary" 
+                      onclick="removePoseFromSection('${section.id}', '${pose.id}')">×</button>
+            </div>
+          </div>
+        `;
+      });
+      
+      return html;
+    }
+    
+    // Update a pose's duration
+    function updatePoseDuration(sectionId, poseId, newDuration) {
+      state.sections = state.sections.map(section => {
+        if (section.id === sectionId) {
+          return {
+            ...section,
+            poses: section.poses.map(pose => {
+              if (pose.id === poseId) {
+                return { ...pose, duration: parseInt(newDuration, 10) || 30 };
+              }
+              return pose;
+            })
+          };
+        }
+        return section;
+      });
+    }
+    
+    // Remove a pose from a section
+    function removePoseFromSection(sectionId, poseId) {
+      state.sections = state.sections.map(section => {
+        if (section.id === sectionId) {
+          return {
+            ...section,
+            poses: section.poses.filter(pose => pose.id !== poseId)
+          };
+        }
+        return section;
+      });
+      
+      renderSections();
+    }
+    
+    // Move a pose up in the order
+    function movePoseUp(sectionId, poseIndex) {
+      if (poseIndex > 0) {
+        state.sections = state.sections.map(section => {
+          if (section.id === sectionId) {
+            const poses = [...section.poses];
+            const temp = poses[poseIndex];
+            poses[poseIndex] = poses[poseIndex - 1];
+            poses[poseIndex - 1] = temp;
+            
+            return {
+              ...section,
+              poses: poses.map((pose, index) => ({
+                ...pose,
+                order: index + 1
+              }))
+            };
+          }
+          return section;
+        });
+        
+        renderSections();
+      }
+    }
+    
+    // Move a pose down in the order
+    function movePoseDown(sectionId, poseIndex) {
+      const section = state.sections.find(s => s.id === sectionId);
+      
+      if (section && poseIndex < section.poses.length - 1) {
+        state.sections = state.sections.map(section => {
+          if (section.id === sectionId) {
+            const poses = [...section.poses];
+            const temp = poses[poseIndex];
+            poses[poseIndex] = poses[poseIndex + 1];
+            poses[poseIndex + 1] = temp;
+            
+            return {
+              ...section,
+              poses: poses.map((pose, index) => ({
+                ...pose,
+                order: index + 1
+              }))
+            };
+          }
+          return section;
+        });
+        
+        renderSections();
+      }
+    }
+    
+    // ---- Preview Functions ----
+    // Update the preview with data from the form
+    function updatePreview() {
+      const sequenceName = document.getElementById('sequenceName').value || 'Untitled Sequence';
+      const sequenceLevel = document.getElementById('sequenceLevel').value || 'Not specified';
+      const sequenceFocus = document.getElementById('sequenceFocus').value || 'Not specified';
+      const sequenceDescription = document.getElementById('sequenceDescription').value || 'No description provided.';
+      
+      document.getElementById('previewSequenceName').textContent = sequenceName;
+      document.getElementById('previewSequenceLevel').textContent = sequenceLevel;
+      document.getElementById('previewSequenceFocus').textContent = sequenceFocus;
+      document.getElementById('previewSequenceDescription').textContent = sequenceDescription;
+      
+      // Calculate total duration
+      const totalDuration = calculateTotalDuration();
+      document.getElementById('previewDuration').textContent = formatTime(totalDuration);
+      
+      // Render preview sections
+      renderPreviewSections();
+    }
+    
+    // Calculate total duration in seconds
+    function calculateTotalDuration() {
+      return state.sections.reduce((total, section) => {
+        return total + section.poses.reduce((sectionTotal, pose) => {
+          return sectionTotal + pose.duration;
+        }, 0);
+      }, 0);
+    }
+    
+    // Format time in seconds to MM:SS format
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}:${secs < 10 ? '0' + secs : secs}`;
+    }
+    
+    // Render sections for preview
+    function renderPreviewSections() {
+      const container = document.getElementById('previewSectionsContainer');
+      container.innerHTML = '';
+      
+      state.sections.forEach(section => {
+        const sectionElement = document.createElement('div');
+        sectionElement.className = 'paper';
+        sectionElement.style.marginTop = '20px';
+        
+        // Calculate section duration
+        const sectionDuration = section.poses.reduce((total, pose) => total + pose.duration, 0);
+        
+        let posesHTML = '';
+        if (section.poses.length === 0) {
+          posesHTML = '<p>No poses in this section.</p>';
+        } else {
+          posesHTML = '<div class="poses-grid">';
+          section.poses.forEach((pose, index) => {
+            posesHTML += `
+              <div class="pose-card">
+                <div class="pose-card-image">
+                  <img src="${pose.pose.image_url}" alt="${pose.pose.english_name}" style="max-height: 100%; max-width: 100%;">
+                </div>
+                <div class="pose-card-content">
+                  <h3>${index + 1}. ${pose.pose.english_name}</h3>
+                  <div>${pose.pose.sanskrit_name || ''}</div>
+                  <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                    <span class="tag ${pose.pose.level.toLowerCase()}">${pose.pose.level}</span>
+                    <span>${pose.duration} sec</span>
+                  </div>
+                  <p style="margin-top: 10px;">${pose.pose.essential_tips}</p>
+                </div>
+              </div>
+            `;
+          });
+          posesHTML += '</div>';
+        }
+        
+        sectionElement.innerHTML = `
+          <h3>${section.name} (${section.poses.length} poses, ${formatTime(sectionDuration)})</h3>
+          ${posesHTML}
+        `;
+        
+        container.appendChild(sectionElement);
+      });
+    }
+    
+    // ---- Save Functionality ----
+    // Save the sequence
+    function saveSequence() {
+      const sequenceName = document.getElementById('sequenceName').value || 'Untitled Sequence';
+      const sequenceLevel = document.getElementById('sequenceLevel').value || null;
+      const sequenceFocus = document.getElementById('sequenceFocus').value || null;
+      const sequenceDescription = document.getElementById('sequenceDescription').value || null;
+      
+      // Prepare the sequence data in the format expected by the database
+      const sequence = {
+        name: sequenceName,
+        level: sequenceLevel,
+        focus: sequenceFocus,
+        description: sequenceDescription,
+        duration: calculateTotalDuration(),
+        user_id: 'current-user-id', // In a real app, this would be the authenticated user's ID
+        is_template: false,
+        isPremium: false,
+        created_at: new Date().toISOString()
+      };
+      
+      // Prepare sections data
+      const sections = state.sections.map(section => ({
+        name: section.name,
+        order: section.order,
+        duration: section.poses.reduce((total, pose) => total + pose.duration, 0),
+        // sequence_id would be filled in after creating the sequence
+      }));
+      
+      // Prepare section_poses data
+      const sectionPoses = [];
+      state.sections.forEach(section => {
+        section.poses.forEach(pose => {
+          sectionPoses.push({
+            pose_id: pose.pose_id,
+            duration: pose.duration,
+            order: pose.order,
+            // section_id and sequence_id would be filled in after creating the sequence and sections
+          });
+        });
+      });
+      
+      // In a real app with Supabase integration, we would:
+      // 1. Create the sequence record
+      // 2. Get the returned sequence ID
+      // 3. Create all section records with the sequence ID
+      // 4. Get the returned section IDs
+      // 5. Create all section_pose records with sequence ID and appropriate section ID
+      
+      // For now, we'll simulate a successful save
+      console.log('Sequence data to be saved:', { sequence, sections, sectionPoses });
+      
+      // Show success message
+      alert(`Sequence "${sequenceName}" saved successfully!`);
+    }
+    
+    // ---- Event Listeners ----
+    // Initialize the app when the DOM is loaded
+    document.addEventListener('DOMContentLoaded', async function() {
+  // Fetch poses from database
+      allPoses = await fetchPosesFromDatabase();
+      state.filteredPoses = [...allPoses];
+      renderSections();
+      
+      // Set up event listeners for pose selection dialog
+      document.getElementById('poseSearchInput').addEventListener('input', filterPoses);
+      document.getElementById('poseCategoryFilter').addEventListener('change', filterPoses);
+      document.getElementById('poseLevelFilter').addEventListener('change', filterPoses);
+      document.getElementById('cancelPoseSelectionButton').addEventListener('click', closePoseSelectionDialog);
+      document.getElementById('addSelectedPosesButton').addEventListener('click', addSelectedPosesToSection);
+      
+      // Save button
+      document.getElementById('saveButton').addEventListener('click', saveSequence);
+    });
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Basic Yoga Sequence Builder</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background-color: #2e7d32;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .button {
+      background-color: #2e7d32;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    .button.secondary {
+      background-color: white;
+      color: #2e7d32;
+      border: 1px solid #2e7d32;
+    }
+    .button:disabled {
+      background-color: #cccccc;
+      color: #666666;
+      cursor: not-allowed;
+      border: none;
+    }
+    .paper {
+      background-color: white;
+      padding: 20px;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .stepper {
+      display: flex;
+      justify-content: space-between;
+      margin: 20px 0;
+    }
+    .step {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      cursor: pointer;
+    }
+    .step.active {
+      font-weight: bold;
+      border-bottom: 2px solid #2e7d32;
+    }
+    .hidden {
+      display: none !important;
+    }
+    .flex {
+      display: flex;
+    }
+    .space-between {
+      justify-content: space-between;
+    }
+    .mt-20 {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Basic Yoga Sequence Builder</h1>
+    <div>
+      <button id="saveButton" class="button">Save</button>
+      <button id="previewToggleButton" class="button">Preview</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="step active" id="step-0" onclick="showStep(0)">Sequence Details</div>
+      <div class="step" id="step-1" onclick="showStep(1)">Add Poses</div>
+      <div class="step" id="step-2" onclick="showStep(2)">Preview</div>
+    </div>
+
+    <!-- Step 1: Sequence Details -->
+    <div id="step-0-content" class="paper">
+      <h2>Step 1: Sequence Details</h2>
+      <div>
+        <label for="sequenceName">Sequence Name</label>
+        <input type="text" id="sequenceName" placeholder="Enter sequence name" style="width: 100%; padding: 8px; margin: 8px 0;">
+      </div>
+      <div>
+        <label for="sequenceLevel">Difficulty Level</label>
+        <select id="sequenceLevel" style="width: 100%; padding: 8px; margin: 8px 0;">
+          <option value="">Select level</option>
+          <option value="Beginner">Beginner</option>
+          <option value="Intermediate">Intermediate</option>
+          <option value="Advanced">Advanced</option>
+        </select>
+      </div>
+      <div>
+        <label for="sequenceFocus">Focus Area</label>
+        <input type="text" id="sequenceFocus" placeholder="e.g., Back Strength, Flexibility, Balance" style="width: 100%; padding: 8px; margin: 8px 0;">
+      </div>
+      <div>
+        <label for="sequenceDescription">Description</label>
+        <textarea id="sequenceDescription" rows="4" placeholder="Describe your sequence" style="width: 100%; padding: 8px; margin: 8px 0;"></textarea>
+      </div>
+    </div>
+
+    <!-- Step 2: Add Poses -->
+    <div id="step-1-content" class="paper hidden">
+      <h2>Step 2: Add Poses</h2>
+      <p>This is where you'll add poses to your yoga sequence.</p>
+      <div>
+        <button class="button" onclick="alert('This would open the pose selection dialog')">+ Add Poses</button>
+      </div>
+      <div style="margin-top: 20px;">
+        <h3>Sample Poses</h3>
+        <ul>
+          <li>Mountain Pose - 30 seconds</li>
+          <li>Downward Dog - 45 seconds</li>
+          <li>Warrior I - 30 seconds</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Step 3: Preview -->
+    <div id="step-2-content" class="paper hidden">
+      <h2>Step 3: Preview</h2>
+      <p>This is where you'll preview your completed sequence.</p>
+      <div style="margin-top: 20px;">
+        <h3>Sequence Summary</h3>
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px;">
+          <h4 id="previewSequenceName">Untitled Sequence</h4>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+            <div><strong>Level:</strong> <span id="previewSequenceLevel">Not specified</span></div>
+            <div><strong>Focus:</strong> <span id="previewSequenceFocus">Not specified</span></div>
+            <div><strong>Duration:</strong> <span>1:45</span></div>
+          </div>
+          <p id="previewSequenceDescription">No description provided.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="flex space-between mt-20">
+      <button id="prevButton" class="button secondary" onclick="prevStep()" disabled>Back</button>
+      <button id="nextButton" class="button" onclick="nextStep()">Next</button>
+    </div>
+  </div>
+
+  <script>
+    // Basic navigation functionality
+    let currentStep = 0;
+    
+    // Function to show a specific step
+    function showStep(step) {
+      // Hide all step contents
+      document.getElementById('step-0-content').classList.add('hidden');
+      document.getElementById('step-1-content').classList.add('hidden');
+      document.getElementById('step-2-content').classList.add('hidden');
+      
+      // Show the selected step
+      document.getElementById('step-' + step + '-content').classList.remove('hidden');
+      
+      // Update stepper UI
+      document.getElementById('step-0').classList.remove('active');
+      document.getElementById('step-1').classList.remove('active');
+      document.getElementById('step-2').classList.remove('active');
+      document.getElementById('step-' + step).classList.add('active');
+      
+      // Update navigation buttons
+      document.getElementById('prevButton').disabled = (step === 0);
+      document.getElementById('nextButton').disabled = (step === 2);
+      document.getElementById('nextButton').textContent = (step === 2) ? 'Finish' : 'Next';
+      
+      // Update current step
+      currentStep = step;
+      
+      // If we're showing the preview step, update the preview data
+      if (step === 2) {
+        updatePreview();
+      }
+    }
+    
+    // Function to go to the next step
+    function nextStep() {
+      if (currentStep < 2) {
+        showStep(currentStep + 1);
+      }
+    }
+    
+    // Function to go to the previous step
+    function prevStep() {
+      if (currentStep > 0) {
+        showStep(currentStep - 1);
+      }
+    }
+    
+    // Function to update the preview with data from the form
+    function updatePreview() {
+      const sequenceName = document.getElementById('sequenceName').value || 'Untitled Sequence';
+      const sequenceLevel = document.getElementById('sequenceLevel').value || 'Not specified';
+      const sequenceFocus = document.getElementById('sequenceFocus').value || 'Not specified';
+      const sequenceDescription = document.getElementById('sequenceDescription').value || 'No description provided.';
+      
+      document.getElementById('previewSequenceName').textContent = sequenceName;
+      document.getElementById('previewSequenceLevel').textContent = sequenceLevel;
+      document.getElementById('previewSequenceFocus').textContent = sequenceFocus;
+      document.getElementById('previewSequenceDescription').textContent = sequenceDescription;
+    }
+    
+    // Preview toggle button
+    document.getElementById('previewToggleButton').addEventListener('click', function() {
+      showStep(2); // Go directly to preview step
+    });
+    
+    // Save button
+    document.getElementById('saveButton').addEventListener('click', function() {
+      const sequenceName = document.getElementById('sequenceName').value || 'Untitled Sequence';
+      alert('Sequence "' + sequenceName + '" saved successfully!');
+    });
+  </script>
+</body>
+</html>
